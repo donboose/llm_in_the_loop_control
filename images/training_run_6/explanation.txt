@@ -1,0 +1,9 @@
+the agent barely improved over thousands of steps, averaging nearly zero reward with only about a third of actions yielding positive returns, and critically, it never achieved a reward above +1.0, suggesting it failed to reach its target objective.
+
+The ISR collapse is particularly troubling: while it started strong, it degraded steadily and stabilized around 0.77-0.81, with over 63% of steps showing zero minimum ISR, meaning large portions of the GRPO group contribute nothing to gradient updates. The KL divergence drifted substantially from near-zero to 0.039, indicating the policy shifted far more than the beta=0.10 penalty could constrain. The loss bottoming out at -0.38 combined with aggressive clipping suggests the policy is making overly forceful updates, while entropy remaining flat around 0.17 shows the model isn't collapsing entirely but also isn't exploring meaningfully.
+
+The real problem is that the drone never actually reached the goal across all 4299 steps. The maximum reward of +0.046 translates to only ~0.002 meters per step of forward progress, and the goal bonus was never triggered. With a mean reward of -0.0098 minus the 0.015 alive penalty, the net progress is just +0.0017 per step—roughly 0.005 m/s forward velocity. The 3-step rollout window is fundamentally too short: at 0.05 seconds total with high drag, the drone can only travel about half a meter, but the goal sits 4-7 meters away, making it physically impossible to reach in three steps unless starting very close. The GRPO is correctly learning which actions move toward the goal, but the horizon constraint makes the task unsolvable.
+
+The second half of training shows almost no improvement—reward barely shifts from Q1=-0.012 to Q11=-0.008, with most gains happening in the first epoch before the model plateaus and starts memorizing.
+
+

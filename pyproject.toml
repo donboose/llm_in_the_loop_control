@@ -1,0 +1,36 @@
+[project]
+name = "rl-project-sem6"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.13.0",
+    "bitsandbytes>=0.49.2",
+    "datasets>=4.8.4",
+    "glfw>=2.10.0",
+    "httpx>=0.28.0",
+    "matplotlib>=3.9.0",
+    "moderngl>=5.12.0",
+    "moderngl-window>=3.1.1",
+    "numpy>=2.4.4",
+    "peft>=0.19.1",
+    "pydantic>=2.0.0",
+    "pybullet>=3.2.7",
+    "pyglfw>=0.2.2",
+    "torch>=2.11.0",
+    "transformers>=5.5.4",
+    "trl>=1.1.0",
+]
+# vllm is intentionally NOT listed here.
+# It has a numpy<2.4 transitive constraint (via mistral-common[image]) that
+# conflicts with numpy>=2.4.4. Install it outside uv's resolver:
+#   uv pip install vllm==0.20.1
+
+[tool.uv.extra-build-dependencies]
+xformers = [{ requirement = "torch", match-runtime = true }]
+
+[tool.pyright]
+venvPath="."
+venv=".venv"
+

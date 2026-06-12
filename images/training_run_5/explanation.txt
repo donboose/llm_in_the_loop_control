@@ -1,0 +1,59 @@
+Observation 1: Goal is the same across all 32 rollouts
+This is correct and expected. Here is the GRPO batch structure with num_generations=32:
+
+Training step T:
+  TRL samples ONE prompt from the dataset  →  obs_T (drone at x,y with goal at gx,gy)
+  vLLM generates 32 completions for that one prompt  →  [c₁, c₂, … c₃₂]
+  reward_fn(prompts=[obs_T, obs_T, …, obs_T], completions=[c₁,…,c₃₂])
+
+All 32 entries in the prompts list are identical — the same observation JSON repeated 32 times. So set_state_all teleports all 32 envs to the same drone position, velocity, and goal. That's why the goal is identical in all 32 panels — it's the same starting question being answered 32 different ways. This is exactly correct: GRPO needs 32 answers to the same question so it can compute relative advantages (A_i = (r_i - mean) / std).
+
+
+Observation 2: Goal changes every training step
+Also correct and intentional. At step T+1, TRL samples a different prompt from the 1600-sample dataset — a different environment reset with a different goal position. So the goal jumps to a new location every step. The drone is not supposed to converge on one fixed goal; it's supposed to learn the policy "look at dx_to_goal, dy_to_goal in the observation and apply force in that direction." The goal position changes every step precisely to force that generalisation.
+
+Observation 3: Obstacles are different across the 32 rollouts — this IS a problem
+This one is not intentional in a clean sense. Here's what's happening:
+
+set_state only teleports the drone (position, velocity) and updates _goal_pos and _prev_dist. It does not touch the obstacles. The 32 reward envs each had their own random obstacles placed when ParallelEnv was first created at training startup, and those obstacles have never changed. So:
+
+- env[0] might have an obstacle blocking the path north
+- env[1] might have a clear path north
+- env[7] might have an obstacle on the east side
+All 32 start from the same drone position and goal, but they physically have different obstacle layouts. Now look at what the prompt contains:
+
+"ray_distances": [0.8, 3.0, 3.0, 1.2, 3.0, 3.0, 0.5, 3.0]  # from dataset env
+
+Those ray distances reflect the dataset env's obstacles at the time the sample was collected. But env[0]'s obstacles are completely different, so env[0]'s rays would read differently. The drone might get proximity penalties in env[0] that have nothing to do with the prompt's state.
+
+
+
+[QUESTION] if this is all intentional, doesnt the drone try to go to the goal in the first one (lets say that goal is to the left side) and it goes there and then the goal moves to the right side so now it applies force in that direction and the goal keeps changing and so does the force direction. So isnt this counter productive?
+
+The model is not learning "go left" or "go right"
+It is learning a conditional rule: given what I see in the observation, what force should I apply?
+
+Look at what the prompt actually contains:
+
+{
+  "drone_x": 1.2,  "drone_y": -0.5,
+  "dx_to_goal": -4.2,  "dy_to_goal": 2.5,
+  "dist_to_goal": 4.89,
+  "goal_x": -3.0,  "goal_y": 2.0,
+  ...
+}
+
+The observation already tells the model exactly where the goal is relative to the drone — dx_to_goal and dy_to_goal. The model's job is not to remember where the goal is. It is to read those numbers and output a force that matches them.
+
+So what GRPO is actually reinforcing is this:
+
+Steps with goal-to-the-left and steps with goal-to-the-right are not contradicting each other. They are both teaching exactly the same underlying rule from different angles. The model that correctly learns the rule will do well on all of them.
+
+This is identical to how any supervised learning works. If you train a model to predict house prices, you show it houses with many different sizes and prices. A small house + low price and a large house + high price are not contradictory training signals — they both reinforce the rule "price scales with size." The diversity is what makes the rule general.
+
+During training, each GRPO step is a fresh 3-step evaluation from a random starting state in the dataset. The goal position is different across training steps because the dataset contains diverse scenarios — that diversity is what trains a policy that works for any goal position, not just one.
+
+Why diversity is essential, not counterproductive
+If every training step used the same goal position (say, always top-right), the model would learn to always output force_x: +10, force_y: +10 regardless of what dx_to_goal and dy_to_goal say. That would work perfectly on the training goal but fail completely when deployed with a goal in the bottom-left.
+
+The changing goal forces the model to learn the function (dx, dy) → (fx, fy) instead of a memorised constant. That function is the actual navigation policy you want.

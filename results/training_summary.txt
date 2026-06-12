@@ -1,0 +1,30 @@
+======================================================================
+  TRAINING SUMMARY  |  1600 steps logged
+  Epoch range: 0.0025 → 4.0000
+======================================================================
+
+-- REWARD --
+  mean:        +5.2132
+  first-50:    +5.2262
+  last-50:     +5.1230
+  max ever:    +19.6901
+  min ever:    -9.0263
+  reward > 0:  1402/1600 (87.6%)
+  reward > 5 (goal): 836/1600 (52.2%)
+
+-- ISR HEALTH --
+  ISR mean:     0.9058
+  ISR last-50:  0.8963
+
+-- KL DIVERGENCE --
+  first-50 mean: 0.000320
+  last-50 mean:  0.010791
+
+-- POLICY ENTROPY --
+  first-50: 0.4352
+  last-50:  0.3969
+
+-- WITHIN-BATCH REWARD STD --
+  mean: 13.620
+  (higher = more GRPO signal)
+

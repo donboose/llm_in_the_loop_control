@@ -1,0 +1,12 @@
+ISR min at 0.10 means 90% of the importance weight is effectively zero for the worst completion in each batch. Those completions deliver zero gradient, so GRPO only learns from the high-ISR ones. When ISR mean drops below ~0.5 (extrapolating the current slope: around step 500-550), gradient variance explodes and learning stops. KL is growing at roughly exponential rate (+42× from step 80 to step 308), max logp-difference per completion shot from 0.21 → 1.68 — that single completion's probability ratio is e^1.68 ≈ 5.4× away from the sampling policy. The beta=0.04 KL penalty isn't strong enough to hold this back.
+
+The negative loss is a symptom, not a cause — GRPO loss goes negative when the policy increases log-probs of high-advantage completions faster than it decreases low-advantage ones, which is normal policy gradient behaviour. But the steepening slope (−0.003 → −0.030 → −0.089 → −0.146 across quarters) is the fingerprint of unchecked aggressive updates.
+
+Why reward is still flat despite visible policy change
+Each evaluation is now a single physics step (DT = 1/60 s) from the prompt state. With DRAG=0.85, a force of 20 N from rest moves the drone only ~0.003 m in one step → progress reward ≈ +0.006 at best, alive penalty −0.005, so the per-step signal range is roughly [−0.015, +0.031]. reward_std=0.012 sits right in the middle of that range — the signal is physically correct but narrow. GRPO is computing advantages from it and the policy is definitely changing (ISR drifting proves that), but 308 steps at 19% through epoch 1 of 3 is still early — the signal needs more steps to compound into visible reward growth. The flat reward is not stagnation; it is what the early phase of single-step RL looks like with a small per-step signal.
+
+
+The three things to change
+1. Slow the policy down before ISR collapses
+2. Use 3-step rollouts instead of 1 (most impactful for reward signal)
+3. Raise num_generations back to 32 from 16 (if memory allows)
