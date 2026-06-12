@@ -1,4 +1,4 @@
-# RL Project Sem 6 - LLM-in-the-loop Continuous Control
+# LLM-in-the-loop Continuous Control (sem 6 work)
 
 A Python-first simulation framework designed to bridge the gap between heavyweight 3D RL platforms (Isaac Lab, Isaac Gym) and the need for simple, parallel, LLM-driven 2D (and optionally 3D) environments. Isaac Lab requires Omniverse, extensive setup, and has no 2D support. This project runs on a standard Ubuntu machine with a single GPU, and is designed from the ground up for LLM-in-the-loop reinforcement learning algorithms like GRPO.
 
